@@ -1,11 +1,81 @@
 package com.example.bitfit_pt1
 
+import android.content.Context
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
+import android.widget.Button
+import android.widget.TextView
+import androidx.annotation.RequiresApi
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.launch
+import java.time.Instant
 
 class MainActivity : AppCompatActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        fun closeKeyboard() {
+            val view = this.currentFocus
+            if(view != null) {
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(view.windowToken, 0)
+            }
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+        }
+
+        var diaryTitleEmpty = true
+        var diaryEntryEmpty = true
+        val diaryTitleEntry: TextView = findViewById(R.id.DiaryTitleEntry)
+        val diaryEntry: TextView = findViewById(R.id.DiaryEntry)
+        val addButton: Button = findViewById(R.id.addButton)
+
+        diaryTitleEntry.addTextChangedListener(object: TextWatcher{
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+            }
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    diaryTitleEmpty = count <= 0
+                addButton.isEnabled = (!diaryTitleEmpty && !diaryEntryEmpty)
+            }
+
+            override fun afterTextChanged(s: Editable?) {
+            }
+
+        })
+
+        diaryEntry.addTextChangedListener(object: TextWatcher{
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+            }
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                diaryEntryEmpty = count <= 0
+                addButton.isEnabled = (!diaryTitleEmpty && !diaryEntryEmpty)
+            }
+
+            override fun afterTextChanged(s: Editable?) {
+            }
+
+        })
+
+        addButton.setOnClickListener {
+            lifecycleScope.launch(IO) {
+                (application as ArticleApplication).db.diaryDao().insert(DiaryEntity(
+                    diaryTitleEntry.text.toString(),
+                    Instant.now(),
+                    diaryEntry.text.toString()
+                ))
+            }
+            diaryTitleEntry.text = ""
+            diaryEntry.text = ""
+            closeKeyboard()
+        }
     }
 }
